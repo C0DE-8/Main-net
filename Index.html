@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Verify Details</title>
+  <!-- Include CryptoJS for signing requests -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <style>
+    :root {
+      --primary-color: #007bff;
+      --secondary-color: #28a745;
+      --bg-gradient-start: #141e30;
+      --bg-gradient-end: #243b55;
+      --container-bg: rgba(0, 0, 0, 0.75);
+      --text-color: #fff;
+      --error-color: #ff6b6b;
+      --back-button-bg: #6c757d;
+      --card-bg: rgba(255, 255, 255, 0.05);
+      --card-border: rgba(255, 255, 255, 0.2);
+    }
+    
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+    
+    * { box-sizing: border-box; }
+    
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+      margin: 0;
+      padding: 0;
+      color: var(--text-color);
+    }
+    
+    .centered-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    
+    /* Container styling with animated overlay */
+    .container {
+      background: var(--container-bg);
+      padding: 2.5rem;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+      width: 400px;
+      max-width: 100%;
+      position: relative;
+      backdrop-filter: blur(6px);
+      overflow: hidden;
+    }
+    .container::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(45deg, rgba(255,255,255,0.1), transparent, rgba(255,255,255,0.1));
+      transform: rotate(45deg);
+      animation: moveGradient 6s linear infinite;
+    }
+    @keyframes moveGradient {
+      0% { transform: translate(0, 0) rotate(45deg); }
+      50% { transform: translate(20%, 20%) rotate(45deg); }
+      100% { transform: translate(0, 0) rotate(45deg); }
+    }
+    
+    h1 {
+      margin-bottom: 1.5rem;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #ddd;
+      font-weight: 600;
+      text-align: left;
+      position: relative;
+      z-index: 1;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #444;
+      border-radius: 5px;
+      margin-bottom: 1.25rem;
+      font-size: 1rem;
+      background: #333;
+      color: var(--text-color);
+      position: relative;
+      z-index: 1;
+    }
+    button {
+      width: 100%;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 5px;
+      background-color: var(--primary-color);
+      color: var(--text-color);
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      position: relative;
+      z-index: 1;
+      transition: background-color 0.3s ease;
+    }
+    button:hover { background-color: #0056b3; }
+    
+    /* Fixed rectangular Back Button with text "Back" */
+    .back-button {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      padding: 0.3rem 0.8rem;
+      font-size: 0.9rem;
+      background-color: var(--back-button-bg);
+      color: var(--text-color);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      z-index: 10000;
+    }
+    .back-button:hover { background-color: #5a6268; }
+    
+    .view-asset-button {
+      background-color: var(--secondary-color);
+    }
+    .view-asset-button:hover { background-color: #218838; }
+    
+    .error {
+      color: var(--error-color);
+      margin-bottom: 1rem;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .detail-item {
+      display: flex;
+      margin: 1rem 0;
+      font-size: 1rem;
+      position: relative;
+      z-index: 1;
+      text-align: left;
+    }
+    .detail-item strong {
+      width: 140px;
+      flex-shrink: 0;
+    }
+    
+    /* Transaction History Card Layout */
+    .transactions-container {
+      width: 100%;
+      margin-top: 1rem;
+    }
+    .transaction-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      transition: transform 0.3s ease;
+    }
+    .transaction-card:hover { transform: translateY(-5px); }
+    .transaction-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .transaction-header h3 {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+    .transaction-amount {
+      font-size: 1rem;
+      font-weight: bold;
+      color: var(--secondary-color);
+    }
+    .transaction-body {
+      margin-bottom: 1rem;
+    }
+    .transaction-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.4rem;
+      font-size: 0.9rem;
+    }
+    .transaction-row .label {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .transaction-row .value {
+      text-align: right;
+      flex: 1;
+    }
+    .transaction-footer {
+      text-align: right;
+    }
+    .transaction-footer .status {
+      font-size: 0.9rem;
+      font-weight: bold;
+    }
+    .status.confirmed { color: #28a745; }
+    .status.pending { color: #ffc107; }
+    
+    /* Reusable Advanced Pop-Up Preloader */
+    #preloader {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 3000;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 1;
+      transition: opacity 0.5s ease;
+    }
+    .advanced-spinner {
+      width: 70px;
+      height: 70px;
+      border: 8px solid rgba(255, 255, 255, 0.2);
+      border-top: 8px solid var(--text-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .preloader-text {
+      font-size: 1.2rem;
+      margin-bottom: 10px;
+    }
+    .progress-container {
+      width: 80%;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .progress-bar {
+      height: 10px;
+      width: 0%;
+      background: linear-gradient(90deg, #00c6ff, #0072ff);
+      border-radius: 10px;
+    }
+    .loading-percent {
+      font-size: 1rem;
+    }
+    
+    @media (max-width: 480px) {
+      .container {
+        width: 90%;
+        padding: 1.5rem;
+      }
+      .detail-item strong {
+        width: 110px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Form Page -->
+  <div id="formContainer" class="centered-container">
+    <div class="container">
+      <h1>Verify Details</h1>
+      <div id="errorMessage" class="error"></div>
+      <form id="recoverForm" onsubmit="return handleSubmit(event)">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" placeholder="Your Name" required>
+        <label for="wallet">Bitcoin Wallet Address</label>
+        <input type="text" id="wallet" name="wallet" placeholder="Your BTC Wallet Address" required>
+        <button type="submit">Proceed</button>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Details Page -->
+  <div id="detailsPage" class="centered-container" style="display:none;">
+    <div class="container">
+      <!-- Fixed rectangular Back Button with text "Back" -->
+      <button class="back-button" onclick="goBackToForm()">Back</button>
+      <h1>User Details</h1>
+      <div class="detail-item"><strong>Name:</strong> <span id="detailName"></span></div>
+      <div class="detail-item"><strong>Address:</strong> Ottweilerstraße 38, 40476 Düsseldorf</div>
+      <div class="detail-item"><strong>Phone:</strong> +491732760483</div>
+      <div class="detail-item"><strong>Occupation:</strong> Store clerk</div>
+      <div class="detail-item"><strong>Relationship:</strong> Married</div>
+      <div class="detail-item"><strong>Sex:</strong> Female</div>
+      <div class="detail-item"><strong>Nationality:</strong> Germany</div>
+      <button class="view-asset-button" onclick="transitionToTxHistory()">View Retrieve-able Asset</button>
+    </div>
+  </div>
+  
+  <!-- Transaction History Page (Card Layout) -->
+  <div id="transactionHistoryPage" class="centered-container" style="display:none;">
+    <div class="container">
+      <!-- Fixed rectangular Back Button with text "Back" -->
+      <button class="back-button" onclick="backToDetails()">Back</button>
+      <h1>Transaction History</h1>
+      <p><strong>Wallet Address:</strong> <span id="txWallet"></span></p>
+      <div id="txCardsContainer" class="transactions-container">
+        <!-- Transaction cards will be injected here -->
+      </div>
+    </div>
+  </div>
+  
+  <!-- Reusable Pop-Up Preloader -->
+  <div id="preloader">
+    <div class="advanced-spinner"></div>
+    <div class="preloader-text" id="preloaderText">Loading...</div>
+    <div class="progress-container">
+      <div class="progress-bar"></div>
+    </div>
+    <div class="loading-percent" id="loadingPercent">0%</div>
+  </div>
+  
+  <script>
+    let storedWallet = "";
+    // Use the provided Binance API key and secret
+    const binanceApiKey = "KmYVC1atRaJqs60T1HQAo51OmKlbdTgdhq3AzegO8KOaqOjlV8oBUSjCMYXU0XVO";
+    const binanceSecret = "XZsgkMQNa167ytslndk0bnnPeFgzzJByzk1Yz8hyFKIkkWLY6UogOG2Gw4sluLqw";
+    
+    // Helper function to sign the query string using CryptoJS
+    function signQuery(queryString) {
+      return CryptoJS.HmacSHA256(queryString, binanceSecret).toString();
+    }
+    
+    function showPreloader(callback, duration, text) {
+      const preloader = document.getElementById('preloader');
+      const preloaderText = document.getElementById('preloaderText');
+      preloaderText.textContent = text || 'Loading...';
+      preloader.style.display = 'flex';
+      preloader.style.opacity = '1';
+      let progress = 0;
+      const progressBar = document.querySelector('.progress-bar');
+      const loadingPercent = document.getElementById('loadingPercent');
+      progressBar.style.width = '0%';
+      loadingPercent.textContent = '0%';
+      const interval = setInterval(() => {
+        progress++;
+        progressBar.style.width = progress + '%';
+        loadingPercent.textContent = progress + '%';
+        if (progress >= 100) clearInterval(interval);
+      }, duration / 100);
+      setTimeout(() => {
+        preloader.style.opacity = '0';
+        setTimeout(() => {
+          preloader.style.display = 'none';
+          callback();
+        }, 500);
+      }, duration);
+    }
+    
+    function handleSubmit(event) {
+      event.preventDefault();
+      const nameInput = document.getElementById('name').value.trim();
+      const wallet = document.getElementById('wallet').value.trim();
+      const errorMessage = document.getElementById('errorMessage');
+      errorMessage.textContent = '';
+      if (nameInput.toLowerCase() !== 'karin tregge') {
+        errorMessage.textContent = 'invalid details';
+        return false;
+      }
+      if (
+        wallet !== '37QibcJwwAxtc5Q1nC62AwpPw73CZaYCEH' &&
+        wallet !== '1NX2mNf8vS32UMiSN7PM2XgXogA9efQ7VH'
+      ) {
+        errorMessage.textContent = 'Invalid Bitcoin wallet address. Please enter a valid BTC wallet address.';
+        return false;
+      }
+      storedWallet = wallet;
+      showPreloader(() => {
+        document.getElementById('formContainer').style.display = 'none';
+        document.getElementById('detailName').textContent = nameInput;
+        document.getElementById('detailsPage').style.display = 'flex';
+      }, 5000, 'pulling credentials');
+      return true;
+    }
+    
+    function goBackToForm() {
+      document.getElementById('detailsPage').style.display = 'none';
+      document.getElementById('formContainer').style.display = 'flex';
+    }
+    
+    function transitionToTxHistory() {
+      showPreloader(() => {
+        document.getElementById('detailsPage').style.display = 'none';
+        document.getElementById('txWallet').textContent = storedWallet;
+        document.getElementById('transactionHistoryPage').style.display = 'flex';
+        fetchTransactions();
+      }, 5000, 'loading transactions');
+    }
+    
+    // Fetch deposit history from Binance API
+    function fetchTransactions() {
+      const timestamp = Date.now();
+      const queryString = `timestamp=${timestamp}`;
+      const signature = signQuery(queryString);
+      const url = `https://api.binance.com/sapi/v1/capital/deposit/hisrec?${queryString}&signature=${signature}`;
+      
+      fetch(url, {
+        method: "GET",
+        headers: { "X-MBX-APIKEY": binanceApiKey }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data && data.length > 0) {
+          displayTransactions(data);
+        } else {
+          document.getElementById('txCardsContainer').innerHTML = '<p>No transactions found.</p>';
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching transactions:', error);
+        document.getElementById('txCardsContainer').innerHTML = '<p>Unable to fetch transactions.</p>';
+      });
+    }
+    
+    function displayTransactions(txs) {
+      const container = document.getElementById('txCardsContainer');
+      container.innerHTML = '';
+      txs.forEach(tx => {
+        const card = document.createElement('div');
+        card.className = 'transaction-card';
+        const date = tx.insertTime ? new Date(tx.insertTime).toLocaleString() : "Pending";
+        const amount = tx.amount ? tx.amount : "0";
+        const coin = tx.coin ? tx.coin : "";
+        const address = tx.address ? tx.address : "N/A";
+        const txId = tx.txId ? tx.txId : "N/A";
+        const statusText = tx.status === 1 ? "Success" : "Pending";
+        card.innerHTML = `
+          <div class="transaction-header">
+            <h3>${date}</h3>
+            <p class="transaction-amount">${amount} ${coin}</p>
+          </div>
+          <div class="transaction-body">
+            <div class="transaction-row">
+              <span class="label">Address:</span>
+              <span class="value">${address}</span>
+            </div>
+            <div class="transaction-row">
+              <span class="label">TxID:</span>
+              <span class="value">${txId}</span>
+            </div>
+          </div>
+          <div class="transaction-footer">
+            <span class="status ${tx.status === 1 ? 'confirmed' : 'pending'}">${statusText}</span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+    
+    function backToDetails() {
+      document.getElementById('transactionHistoryPage').style.display = 'none';
+      document.getElementById('detailsPage').style.display = 'flex';
+    }
+  </script>
+</body>
+</html>
