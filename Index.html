@@ -1,1299 +1,1026 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Complete Deposit Flow - Select Payment & Deposit Crypto</title>
+  <meta charset="UTF-8">
+  <title>Complete Transaction Scanner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    /* -----------------------------
-       GLOBAL STYLES & RESET
-    ------------------------------ */
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    /* ==== Global & Theme Styles ==== */
+    :root {
+      --primary-color: #007bff;
+      --secondary-color: #28a745;
+      --bg-gradient-start: #141e30;
+      --bg-gradient-end: #243b55;
+      --container-bg: rgba(0, 0, 0, 0.85);
+      --text-color: #fff;
+      --error-color: red;
+      --back-button-bg: #6c757d;
+      --card-bg: rgba(255, 255, 255, 0.1);
+      --card-border: rgba(255, 255, 255, 0.2);
+      --modal-bg: rgba(0, 0, 0, 0.95);
     }
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+    * { box-sizing: border-box; }
     body {
-      background-color: #000;
-      color: #fff;
-      min-height: 100vh;
-      overflow-y: auto;
-      position: relative;
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+      color: var(--text-color);
     }
-    a {
-      text-decoration: none;
-      color: inherit;
-    }
-    /* -----------------------------
-       1) BOTTOM-SHEET MODAL: Select Payment Method
-    ------------------------------ */
-    .payment-modal {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      width: 100%;
-      background-color: #1a1a1a;
-      border-radius: 12px 12px 0 0;
-      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
-      overflow-y: auto;
-      max-height: 80vh;
-      padding-bottom: 1rem;
-      z-index: 9999;
-    }
-    @media (min-width: 768px) {
-      .payment-modal {
-        max-width: 500px;
-        margin: 0 auto;
-      }
-    }
-    .payment-modal-header {
+    .centered-container {
       display: flex;
+      justify-content: center;
       align-items: center;
-      justify-content: space-between;
-      background-color: #2c2c2c;
+      min-height: 100vh;
       padding: 1rem;
-      position: sticky;
-      top: 0;
+    }
+    /* Standard container style for most pages */
+    .container {
+      background: var(--container-bg);
+      padding: 2em;
+      border-radius: 8px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+      width: 400px;
+      max-width: 90%;
+      text-align: center;
+      position: relative;
       z-index: 10;
     }
-    .payment-modal-header h2 {
-      font-size: 1.1rem;
-      color: #fff;
-    }
-    .close-btn {
+    /* Transaction History Page container: no extra background/shadow */
+    #txHistoryPage .container {
       background: transparent;
+      box-shadow: none;
+      width: 400px;
+      max-width: 90%;
+      text-align: center;
+      margin: 0 auto;
+    }
+    /* Recovery Progress container (slightly smaller) */
+    #recoveryProgressPage .container {
+      width: 350px;
+      max-width: 90%;
+      margin: 0 auto;
+    }
+    h1 { margin-bottom: 1em; }
+    label { display: block; margin-bottom: 0.5em; text-align: left; color: #ddd; }
+    input[type="text"] {
+      width: 100%;
+      padding: 0.75em;
+      margin-bottom: 1em;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background: #333;
+      color: var(--text-color);
+      font-size: 1em;
+    }
+    button {
+      width: 100%;
+      padding: 0.75em;
       border: none;
-      font-size: 1.5rem;
+      border-radius: 4px;
+      background-color: var(--primary-color);
+      color: var(--text-color);
+      font-size: 1em;
       cursor: pointer;
-      color: #999;
-      transition: color 0.3s ease;
+      margin-top: 0.5em;
+      transition: background-color 0.3s ease;
     }
-    .close-btn:hover {
-      color: #fff;
-    }
-    .payment-options {
+    button:hover { background-color: #0056b3; }
+    .error { color: var(--error-color); margin-bottom: 1em; text-align: center; }
+    .detail-item {
       display: flex;
-      flex-direction: column;
+      margin: 0.5em 0;
+      text-align: left;
+      font-size: 0.95em;
     }
-    .payment-option {
-      display: flex;
-      align-items: center;
-      padding: 1rem;
-      border-bottom: 1px solid #333;
+    .detail-item strong { width: 140px; }
+    /* ==== Transaction Card Styles ==== */
+    .transactions-container { width: 100%; margin-top: 1em; }
+    .transaction-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 0.75em;
+      margin-bottom: 0.75em;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      transition: transform 0.3s ease;
+      text-align: left;
+    }
+    .transaction-card:hover { transform: translateY(-3px); }
+    .transaction-header { display: flex; justify-content: space-between; margin-bottom: 0.5em; }
+    .transaction-header h3 { margin: 0; font-size: 1em; }
+    .transaction-amount { font-size: 0.95em; font-weight: bold; color: var(--secondary-color); }
+    .transaction-row { display: flex; justify-content: space-between; font-size: 0.9em; margin-bottom: 0.25em; }
+    .transaction-row .label { font-weight: 600; }
+    .transaction-footer { text-align: right; }
+    .transaction-footer .status { font-size: 0.9em; font-weight: bold; }
+    .status.confirmed { color: #28a745; }
+    /* ==== Navigation Buttons ==== */
+    .back-button {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      padding: 0.2rem 0.4rem;
+      font-size: 0.7em;
+      background-color: var(--back-button-bg);
+      color: var(--text-color);
+      border: none;
+      border-radius: 4px;
       cursor: pointer;
-      transition: background-color 0.2s ease;
+      z-index: 10000;
     }
-    .payment-option:hover {
-      background-color: #2a2a2a;
+    .back-button:hover { background-color: #5a6268; }
+    #checkAssetButton {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 0.5rem 1rem;
+      background-color: var(--primary-color);
+      color: var(--text-color);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      z-index: 10000;
     }
-    .payment-option:last-child {
-      border-bottom: none;
-    }
-    .icon {
-      flex-shrink: 0;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background-color: #2e2e2e;
-      display: flex;
+    #checkAssetButton:hover { background-color: #0056b3; }
+    /* ==== Preloader Overlay ==== */
+    #preloader {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      display: none;
       align-items: center;
       justify-content: center;
-      margin-right: 0.75rem;
+      z-index: 15000;
+    }
+    .advanced-spinner {
+      width: 60px;
+      height: 60px;
+      border: 6px solid rgba(255,255,255,0.2);
+      border-top: 6px solid var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .preloader-text { font-size: 1.2em; margin-top: 0.5em; }
+    /* ==== Scanner Modal (Matrix Style) ==== */
+    #scannerModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--modal-bg);
+      z-index: 20000;
+      color: #0f0;
+      font-family: monospace;
+      overflow: hidden;
+      padding: 1em;
+    }
+    #scannerModal .top-left-label {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 1.2em;
+      color: #0f0;
+      z-index: 3;
+    }
+    #matrixCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    #scanline {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: #0F0;
+      box-shadow: 0 0 8px 2px #0F0;
+      z-index: 2;
+      display: block;
+      animation: scanAnim 20s linear forwards;
+    }
+    @keyframes scanAnim { from { top: 0; } to { top: 100%; } }
+    /* ==== Selection Modal (Recoverable Asset) ==== */
+    #selectionModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--modal-bg);
+      z-index: 20000;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 1em;
+    }
+    #selectionModal h2 { margin-bottom: 1em; }
+    #selectionModal .selection-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1em;
+      justify-content: center;
+    }
+    #selectionModal .selection-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 1em;
+      width: 180px;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+      text-align: left;
+    }
+    #selectionModal .selection-card:hover { transform: scale(1.05); }
+    /* ==== Advanced Recovery Progress Page with Matrix Background ==== */
+    #recoveryProgressPage {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--modal-bg);
+      z-index: 20000;
       overflow: hidden;
     }
-    .icon img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .content {
-      display: flex;
-      flex-direction: column;
-      flex-grow: 1;
-    }
-    .title {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 0.25rem;
-      color: #fff;
-    }
-    .desc {
-      font-size: 0.85rem;
-      color: #ccc;
-    }
-    .tag {
-      font-size: 0.7rem;
-      padding: 0.25rem 0.5rem;
-      border-radius: 8px;
-      background-color: #34c759;
-      color: #fff;
-      margin-left: auto;
-      align-self: center;
-    }
-    .payment-option.recommended {
-      border-left: 4px solid #34c759;
-    }
-    /* -----------------------------
-       2) DEPOSIT CRYPTO LIST PAGE (Advanced Layout)
-    ------------------------------ */
-    .crypto-list-container {
-      display: none;
-      background: linear-gradient(to bottom, #121212, #000);
-      min-height: 100vh;
-      padding-bottom: 2rem;
-    }
-    .top-bar {
-      position: sticky;
-      top: 0;
-      background-color: #121212;
-      z-index: 10;
-      padding: 0.5rem 1rem;
-      display: flex;
-      align-items: center;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.6);
-    }
-    .back-btn {
-      background-color: #2c2c2c;
-      border: none;
-      border-radius: 50%;
-      width: 36px;
-      height: 36px;
-      color: #fff;
-      font-size: 1.2rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      margin-right: 1rem;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-      transition: background-color 0.3s;
-    }
-    .back-btn:hover {
-      background-color: #34c759;
-    }
-    .screen-title {
-      font-size: 1rem;
-      font-weight: 600;
-    }
-    .search-banner-tabs {
-      background-color: #121212;
-      padding: 0 1rem 1rem 1rem;
-    }
-    /* Advanced Responsive Search Bar */
-    .search-bar {
-      display: flex;
-      align-items: center;
-      background-color: #1a1a1a;
-      border-radius: 6px;
-      padding: 0.6rem 0.8rem;
-      margin: 0.5rem auto;
-      position: relative;
-      transition: box-shadow 0.3s ease;
-      width: 90%;
-      max-width: 600px;
-    }
-    .search-bar:focus-within {
-      box-shadow: 0 0 8px rgba(52, 199, 89, 0.8);
-    }
-    .search-bar input {
-      flex: 1;
-      background: transparent;
-      border: none;
-      color: #fff;
-      font-size: 1rem;
-      padding-left: 0.5rem;
-      outline: none;
-    }
-    .search-bar input::placeholder {
-      color: #777;
-    }
-    .search-icon {
-      color: #777;
-      font-size: 1.2rem;
-      margin-right: 0.5rem;
-    }
-    .clear-btn {
-      background: transparent;
-      border: none;
-      color: #fff;
-      font-size: 1rem;
-      cursor: pointer;
+    /* Recovery matrix canvas runs behind the container */
+    #recoveryMatrixCanvas {
       position: absolute;
-      right: 0.8rem;
-      display: none;
-    }
-    .deposit-banner {
-      background: linear-gradient(to right, #2c2c2c, #1a1a1a);
-      padding: 0.5rem 1rem;
-      margin-bottom: 0.5rem;
-      border-radius: 6px;
-      font-size: 0.85rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.5);
-    }
-    .deposit-banner a {
-      color: #34c759;
-      text-decoration: none;
-      margin-left: 0.5rem;
-      cursor: pointer;
-    }
-    .deposit-banner a:hover {
-      text-decoration: underline;
-    }
-    .tabs {
-      display: flex;
-      border-bottom: 1px solid #333;
-    }
-    .tab {
-      flex: 1;
-      text-align: center;
-      padding: 0.75rem 0;
-      cursor: pointer;
-      font-size: 0.9rem;
-      color: #bbb;
-      transition: color 0.3s;
-    }
-    .tab:hover {
-      color: #fff;
-    }
-    .tab.active {
-      color: #fff;
-      border-bottom: 2px solid #34c759;
-    }
-    .recent-cryptos-container {
-      padding: 1rem;
-    }
-    .recent-title {
-      font-size: 0.95rem;
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-    }
-    .recent-cryptos-grid {
-      display: flex;
-      overflow-x: auto;
-      gap: 1rem;
-    }
-    .recent-crypto-card {
-      min-width: 80px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      cursor: pointer;
-      transition: transform 0.2s;
-      border-radius: 8px;
-      background: #1a1a1a;
-      padding: 0.5rem;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
-    }
-    .recent-crypto-card:hover {
-      transform: scale(1.05);
-    }
-    .recent-crypto-logo {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      margin-bottom: 0.25rem;
-      object-fit: cover;
-    }
-    .recent-crypto-symbol {
-      font-size: 0.85rem;
-      font-weight: 600;
-    }
-    .list-container {
-      position: relative;
-      padding: 0 1rem 2rem 1rem;
-    }
-    .letter-section {
-      margin-top: 1.5rem;
-    }
-    .letter-title {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: #ccc;
-      margin-bottom: 0.25rem;
-    }
-    .crypto-item {
-      display: flex;
-      align-items: center;
-      padding: 0.75rem 0;
-      border-bottom: 1px solid #333;
-      cursor: pointer;
-      transition: background-color 0.2s, transform 0.2s;
-      border-radius: 6px;
-      margin-bottom: 0.5rem;
-      background: #1a1a1a;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.5);
-    }
-    .crypto-item:hover {
-      background-color: #1f1f1f;
-      transform: translateY(-2px);
-    }
-    .crypto-logo {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      margin-right: 0.75rem;
-      object-fit: cover;
-    }
-    .crypto-symbol {
-      font-weight: 600;
-      margin-right: 0.5rem;
-    }
-    .crypto-name {
-      font-size: 0.9rem;
-      color: #ddd;
-    }
-    .alphabet-nav {
-      position: fixed;
-      right: 1rem;
-      top: 50%;
-      transform: translateY(-50%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      background: rgba(0, 0, 0, 0.4);
-      padding: 0.5rem;
-      border-radius: 12px;
-      z-index: 100;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-    }
-    .alphabet-nav a {
-      text-decoration: none;
-      color: #bbb;
-      font-size: 0.6rem;
-      margin: 0.2rem 0;
-      transition: color 0.3s;
-    }
-    .alphabet-nav a:hover {
-      color: #fff;
-    }
-    .alphabet-nav a.active {
-      color: #34c759;
-      font-weight: bold;
-    }
-    @media (max-width: 480px) {
-      .search-bar {
-        padding: 0.5rem 0.75rem;
-      }
-      .search-bar input {
-        font-size: 0.8rem;
-      }
-    }
-    /* -----------------------------
-       3) LEARN MORE SLIDER & OVERLAY (Advanced)
-    ------------------------------ */
-    .learn-more-slider {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 80vh;
-      background: linear-gradient(135deg, #1f1f1f, #121212);
-      transform: translateY(100%);
-      transition: transform 0.4s ease;
-      z-index: 10002;
-      overflow-y: auto;
-      padding: 1.5rem;
-      border-top-left-radius: 12px;
-      border-top-right-radius: 12px;
-      box-shadow: 0 -6px 30px rgba(0, 0, 0, 0.7);
-    }
-    .learn-more-slider.active {
-      transform: translateY(0);
-    }
-    .slider-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1rem;
-    }
-    .slider-header h2 {
-      font-size: 1.4rem;
-      color: #fff;
-    }
-    .slider-close {
-      background: transparent;
-      border: none;
-      font-size: 1.5rem;
-      color: #ccc;
-      cursor: pointer;
-      transition: color 0.3s;
-    }
-    .slider-close:hover {
-      color: #fff;
-    }
-    .slider-content {
-      font-size: 1rem;
-      line-height: 1.6;
-      color: #ddd;
-    }
-    .slider-content ol {
-      margin-left: 1.5rem;
-      margin-top: 0.5rem;
-    }
-    .slider-content li {
-      margin-bottom: 0.5rem;
-    }
-    .slider-content p {
-      margin-top: 1rem;
-    }
-    /* Overlay for Learn More Slider */
-    .slider-overlay {
-      position: fixed;
       top: 0;
       left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 10001;
-      display: none;
+      z-index: 1;
     }
-    .slider-overlay.active {
-      display: block;
+    /* Styled container for recovery progress */
+    #recoveryProgressPage .container {
+      position: relative;
+      z-index: 10;
+      background: var(--container-bg);
+      padding: 2em;
+      border-radius: 8px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+      width: 350px;
+      max-width: 90%;
+      text-align: center;
+      margin: 0 auto;
+    }
+    #recoveryProgressPage h1 { margin-bottom: 0.5em; }
+    #recoveryDetails { font-size: 0.95em; margin-bottom: 1em; }
+    #recoveryStatus { font-size: 1.2em; margin-bottom: 1em; }
+    .progress-container {
+      width: 100%;
+      height: 10px;
+      background: #333;
+      border-radius: 5px;
+      overflow: hidden;
+      margin: 0 auto;
+    }
+    #recoveryProgressBar {
+      width: 0%;
+      height: 100%;
+      background: var(--secondary-color);
+      transition: width 0.1s linear;
+    }
+    /* Withdrawal Button Styling */
+    #withdrawalButton {
+      display: none;
+      margin-top: 1em;
+      background-color: var(--primary-color);
+      color: var(--text-color);
+      border: none;
+      border-radius: 4px;
+      padding: 0.75em;
+      cursor: pointer;
+      font-size: 1em;
+    }
+    #withdrawalButton:hover {
+      background-color: #0056b3;
+    }
+    /* ==== Withdrawal Information Modal ==== */
+    #withdrawalInfoModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--modal-bg);
+      z-index: 25000;
+      justify-content: center;
+      align-items: center;
+      padding: 1em;
+    }
+    #withdrawalInfoModal .container {
+      max-width: 350px;
+      width: 100%;
+      text-align: left;
+      background: var(--container-bg);
+      padding: 2em;
+      border-radius: 8px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+    }
+    #withdrawalInfoModal h1 { margin-bottom: 1em; }
+    #withdrawalInfoModal p { font-size: 0.95em; line-height: 1.4em; margin-bottom: 1em; }
+    /* ==== Payment Details Modal (Select Payment Method) ==== */
+    #paymentDetailsModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--modal-bg);
+      z-index: 26000;
+      justify-content: center;
+      align-items: center;
+      padding: 1em;
+    }
+    #paymentDetailsModal .container {
+      max-width: 350px;
+      width: 100%;
+      text-align: left;
+      background: var(--container-bg);
+      padding: 2em;
+      border-radius: 8px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+    }
+    #paymentDetailsModal h1 { margin-bottom: 1em; }
+    #paymentDetailsModal p { font-size: 0.95em; line-height: 1.4em; margin-bottom: 1em; }
+    /* The "Paid" button is removed from this modal */
+    /* ==== Ethereum Payment Modal ==== */
+    #ethPaymentModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--modal-bg);
+      z-index: 26500;
+      justify-content: center;
+      align-items: center;
+      padding: 1em;
+    }
+    #ethPaymentModal .container {
+      max-width: 350px;
+      width: 100%;
+      text-align: left;
+      background: var(--container-bg);
+      padding: 2em;
+      border-radius: 8px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+    }
+    #ethPaymentModal h1 { margin-bottom: 1em; }
+    /* ==== Verification Modal ==== */
+    #verificationModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--modal-bg);
+      z-index: 27000;
+      justify-content: center;
+      align-items: center;
+      padding: 1em;
+    }
+    #verificationModal .container {
+      max-width: 350px;
+      width: 100%;
+      text-align: center;
+      background: var(--container-bg);
+      padding: 2em;
+      border-radius: 8px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+    }
+    /* ==== Payment Outcome Modal (for unavailable methods) ==== */
+    #paymentOutcomeModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--modal-bg);
+      z-index: 28000;
+      justify-content: center;
+      align-items: center;
+      padding: 1em;
+    }
+    #paymentOutcomeModal .container {
+      max-width: 350px;
+      width: 100%;
+      text-align: left;
+      background: var(--container-bg);
+      padding: 2em;
+      border-radius: 8px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+    }
+    #paymentOutcomeModal h1 { margin-bottom: 1em; }
+    #paymentOutcomeModal p { font-size: 0.95em; line-height: 1.4em; margin-bottom: 1em; }
+    @media (max-width: 480px) {
+      .container { width: 90%; padding: 1.5em; }
+      .detail-item strong { width: 110px; }
+    }
+    /* ==== Highlight Animation ==== */
+    .highlight {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #0F0;
+      border-radius: 50%;
+      box-shadow: 0 0 6px 2px #0F0;
+      opacity: 1;
+      animation: highlightAnim 0.6s ease-out forwards;
+    }
+    @keyframes highlightAnim {
+      from { transform: scale(1); opacity: 1; }
+      to { transform: scale(2); opacity: 0; }
     }
   </style>
 </head>
 <body>
-  <!-- 1) Bottom Sheet: Select Payment Method -->
-  <div class="payment-modal">
-    <div class="payment-modal-header">
-      <h2>Select Payment Method</h2>
-      <button class="close-btn" title="Close">&times;</button>
+  <!-- Preloader Overlay -->
+  <div id="preloader">
+    <div class="advanced-spinner"></div>
+    <div class="preloader-text">Loading...</div>
+  </div>
+  
+  <!-- Form Page (Client Verification) -->
+  <div id="formPage" class="centered-container">
+    <div class="container">
+      <h1>Client Verification</h1>
+      <div id="errorMessage" class="error"></div>
+      <form id="recoverForm" onsubmit="return handleSubmit(event)">
+        <label for="name">Full Name</label>
+        <input type="text" id="name" name="name" placeholder="Enter Your Full Name" required>
+        <label for="wallet">Wallet Address</label>
+        <input type="text" id="wallet" name="wallet" placeholder="Enter Your Wallet Address" required>
+        <button type="submit">Proceed</button>
+      </form>
     </div>
-    <div class="payment-options">
-      <!-- Option 1: Deposit EUR (Recommended) -->
-      <div class="payment-option recommended">
-        <div class="icon">💶</div>
-        <div class="content">
-          <div class="title">Deposit EUR</div>
-          <div class="desc">via Bank Transfers or Top-Ups</div>
-        </div>
-        <div class="tag">Recommended</div>
-      </div>
-      <!-- Option 2: Buy with EUR -->
-      <div class="payment-option">
-        <div class="icon">💳</div>
-        <div class="content">
-          <div class="title">Buy with EUR</div>
-          <div class="desc">Visa, Mastercard and JCB are supported</div>
-        </div>
-      </div>
-      <!-- Option 3: P2P Trading -->
-      <div class="payment-option">
-        <div class="icon">🤝</div>
-        <div class="content">
-          <div class="title">P2P Trading</div>
-          <div class="desc">Bank Transfer, Revolut, Wise and more</div>
-        </div>
-      </div>
-      <!-- Option 4: Deposit Crypto -->
-      <div class="payment-option" id="deposit-crypto-option">
-        <div class="icon">
-          <img src="https://cryptologos.cc/logos/bitcoin-btc-logo.png?v=025" alt="Bitcoin Logo">
-        </div>
-        <div class="content">
-          <div class="title">Deposit Crypto</div>
-          <div class="desc">Already have crypto? Deposit directly</div>
-        </div>
+  </div>
+  
+  <!-- Details Page -->
+  <div id="detailsPage" class="centered-container" style="display:none;">
+    <div class="container">
+      <button class="back-button" onclick="backToForm()">Back</button>
+      <h1>Client Details</h1>
+      <div class="detail-item"><strong>Full Name:</strong> <span id="detailName"></span></div>
+      <div class="detail-item"><strong>Address:</strong> Ottweilerstraße 38, 40476 Düsseldorf</div>
+      <div class="detail-item"><strong>Phone:</strong> +49 1732760483</div>
+      <div class="detail-item"><strong>Occupation:</strong> Store Clerk</div>
+      <div class="detail-item"><strong>Status:</strong> Married</div>
+      <div class="detail-item"><strong>Gender:</strong> Female</div>
+      <div class="detail-item"><strong>Nationality:</strong> Germany</div>
+      <button onclick="toTxHistory()">View Transaction History</button>
+    </div>
+  </div>
+  
+  <!-- Transaction History Page (Unstyled container) -->
+  <div id="txHistoryPage" class="centered-container" style="display:none;">
+    <div class="container">
+      <button class="back-button" onclick="backToDetails()">Back</button>
+      <h1>Transaction History</h1>
+      <p><strong>Wallet Address:</strong> <span id="txWallet"></span></p>
+      <div id="txCardsContainer" class="transactions-container">
+        <!-- Dummy transaction cards will be generated here -->
       </div>
     </div>
   </div>
-
-  <!-- 2) Deposit Crypto List Page (Restored & Advanced Layout with Expanded Coins) -->
-  <div class="crypto-list-container">
-    <!-- Top Bar: Back Button + Title -->
-    <div class="top-bar">
-      <button class="back-btn" id="back-btn">&#8592;</button>
-      <div class="screen-title">Deposit Crypto</div>
+  
+  <!-- Check Recoverable Asset Button -->
+  <button id="checkAssetButton">Check Recoverable Asset</button>
+  
+  <!-- Scanner Modal (Matrix Style) -->
+  <div id="scannerModal">
+    <div class="top-left-label">Recovering Assets...</div>
+    <canvas id="matrixCanvas"></canvas>
+    <div id="scanline"></div>
+  </div>
+  
+  <!-- Selection Modal (Recoverable Asset Modal) -->
+  <div id="selectionModal">
+    <h2>Recoverable Asset</h2>
+    <div class="selection-container" id="selectionContainer">
+      <!-- Dummy transactions 9–12 will be injected here -->
     </div>
-    <!-- Search, Banner & Tabs -->
-    <div class="search-banner-tabs">
-      <div class="search-bar">
-        <span class="search-icon">&#128269;</span>
-        <input type="text" id="crypto-search" placeholder="Please select your preferred pair" />
-        <button type="button" id="clear-search" class="clear-btn">×</button>
+    <button onclick="startRecovery()">Proceed to Recover</button>
+  </div>
+  
+  <!-- Advanced Recovery Progress Page with Matrix Background -->
+  <div id="recoveryProgressPage">
+    <canvas id="recoveryMatrixCanvas"></canvas>
+    <div class="container">
+      <h1>Asset Recovery Progress</h1>
+      <p id="recoveryDetails"></p>
+      <div id="recoveryStatus">Recovering assets, please wait...</div>
+      <div class="progress-container">
+        <div id="recoveryProgressBar" class="progress-bar"></div>
       </div>
-      <div class="deposit-banner">
-        <span>How to Deposit?</span>
-        <a id="learn-more" href="javascript:void(0)">Learn More &gt;</a>
-      </div>
-      <div class="tabs">
-        <div class="tab active" id="tab-crypto">Crypto</div>
-        <div class="tab" id="tab-fiat">Fiat</div>
-      </div>
-    </div>
-    <!-- Frequently Deposited Cryptocurrencies -->
-    <div class="recent-cryptos-container">
-      <div class="recent-title">Frequently Deposited Cryptocurrencies</div>
-      <div class="recent-cryptos-grid">
-        <div class="recent-crypto-card">
-          <img src="https://cryptologos.cc/logos/bitcoin-btc-logo.png?v=025" alt="BTC Logo" class="recent-crypto-logo" />
-          <div class="recent-crypto-symbol">BTC</div>
-        </div>
-        <div class="recent-crypto-card">
-          <img src="https://cryptologos.cc/logos/ethereum-eth-logo.png?v=025" alt="ETH Logo" class="recent-crypto-logo" />
-          <div class="recent-crypto-symbol">ETH</div>
-        </div>
-        <div class="recent-crypto-card">
-          <img src="https://cryptologos.cc/logos/tether-usdt-logo.png?v=025" alt="USDT Logo" class="recent-crypto-logo" />
-          <div class="recent-crypto-symbol">USDT</div>
-        </div>
-        <div class="recent-crypto-card">
-          <img src="https://cryptologos.cc/logos/binance-coin-bnb-logo.png?v=025" alt="BNB Logo" class="recent-crypto-logo" />
-          <div class="recent-crypto-symbol">BNB</div>
-        </div>
-        <div class="recent-crypto-card">
-          <img src="https://cryptologos.cc/logos/dogecoin-doge-logo.png?v=025" alt="DOGE Logo" class="recent-crypto-logo" />
-          <div class="recent-crypto-symbol">DOGE</div>
-        </div>
-        <div class="recent-crypto-card">
-          <img src="https://cryptologos.cc/logos/cardano-ada-logo.png?v=025" alt="ADA Logo" class="recent-crypto-logo" />
-          <div class="recent-crypto-symbol">ADA</div>
-        </div>
-      </div>
-    </div>
-    <!-- Main Crypto List (Alphabetical Sections) -->
-    <div class="list-container">
-      <!-- Section A -->
-      <div class="letter-section" id="A">
-        <div class="letter-title">A</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/avalanche-avax-logo.png?v=025" alt="AVAX Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">AVAX</div>
-            <div class="crypto-name">Avalanche</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/algorand-algo-logo.png?v=025" alt="ALGO Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">ALGO</div>
-            <div class="crypto-name">Algorand</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/aave-aave-logo.png?v=025" alt="AAVE Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">AAVE</div>
-            <div class="crypto-name">Aave</div>
-          </div>
-        </div>
-        <!-- Additional coin in A -->
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/amp-amp-logo.png?v=025" alt="AMP Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">AMP</div>
-            <div class="crypto-name">Amp</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section B -->
-      <div class="letter-section" id="B">
-        <div class="letter-title">B</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/bitcoin-btc-logo.png?v=025" alt="BTC Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">BTC</div>
-            <div class="crypto-name">Bitcoin</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/binance-coin-bnb-logo.png?v=025" alt="BNB Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">BNB</div>
-            <div class="crypto-name">Binance Coin</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/bitcoin-cash-bch-logo.png?v=025" alt="BCH Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">BCH</div>
-            <div class="crypto-name">Bitcoin Cash</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/bitcoin-sv-bsv-logo.png?v=025" alt="BSV Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">BSV</div>
-            <div class="crypto-name">Bitcoin SV</div>
-          </div>
-        </div>
-        <!-- Additional coin in B -->
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/bitcoin-gold-btg-logo.png?v=025" alt="BTG Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">BTG</div>
-            <div class="crypto-name">Bitcoin Gold</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section C -->
-      <div class="letter-section" id="C">
-        <div class="letter-title">C</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/cardano-ada-logo.png?v=025" alt="ADA Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">ADA</div>
-            <div class="crypto-name">Cardano</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/chainlink-link-logo.png?v=025" alt="LINK Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">LINK</div>
-            <div class="crypto-name">Chainlink</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/compound-comp-logo.png?v=025" alt="COMP Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">COMP</div>
-            <div class="crypto-name">Compound</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/crypto-com-coin-cro-logo.png?v=025" alt="CRO Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">CRO</div>
-            <div class="crypto-name">Crypto.com Coin</div>
-          </div>
-        </div>
-        <!-- Additional coin in C -->
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/chiliz-chz-logo.png?v=025" alt="CHZ Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">CHZ</div>
-            <div class="crypto-name">Chiliz</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section D -->
-      <div class="letter-section" id="D">
-        <div class="letter-title">D</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/dogecoin-doge-logo.png?v=025" alt="DOGE Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">DOGE</div>
-            <div class="crypto-name">Dogecoin</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/decentraland-mana-logo.png?v=025" alt="MANA Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">MANA</div>
-            <div class="crypto-name">Decentraland</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/dash-dash-logo.png?v=025" alt="DASH Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">DASH</div>
-            <div class="crypto-name">Dash</div>
-          </div>
-        </div>
-        <!-- Additional coin in D -->
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/dai-dai-logo.png?v=025" alt="DAI Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">DAI</div>
-            <div class="crypto-name">Dai</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section E -->
-      <div class="letter-section" id="E">
-        <div class="letter-title">E</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/ethereum-eth-logo.png?v=025" alt="ETH Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">ETH</div>
-            <div class="crypto-name">Ethereum</div>
-          </div>
-        </div>
-        <!-- Removed Elrond from list -->
-        <!-- Additional coin in E -->
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/eos-eos-logo.png?v=025" alt="EOS Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">EOS</div>
-            <div class="crypto-name">EOS</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section F -->
-      <div class="letter-section" id="F">
-        <div class="letter-title">F</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/fantom-ftm-logo.png?v=025" alt="FTM Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">FTM</div>
-            <div class="crypto-name">Fantom</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/filecoin-fil-logo.png?v=025" alt="FIL Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">FIL</div>
-            <div class="crypto-name">Filecoin</div>
-          </div>
-        </div>
-        <!-- Additional coin in F -->
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/flow-flow-logo.png?v=025" alt="FLOW Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">FLOW</div>
-            <div class="crypto-name">Flow</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section G -->
-      <div class="letter-section" id="G">
-        <div class="letter-title">G</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/gala-gala-logo.png?v=025" alt="GALA Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">GALA</div>
-            <div class="crypto-name">Gala</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/gemini-dollar-gusd-logo.png?v=025" alt="GUSD Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">GUSD</div>
-            <div class="crypto-name">Gemini Dollar</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/gnosis-gno-logo.png?v=025" alt="GNO Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">GNO</div>
-            <div class="crypto-name">Gnosis</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section H -->
-      <div class="letter-section" id="H">
-        <div class="letter-title">H</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/hedera-hbar-logo.png?v=025" alt="HBAR Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">HBAR</div>
-            <div class="crypto-name">Hedera Hashgraph</div>
-          </div>
-        </div>
-        <!-- Additional coin in H -->
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/huobi-token-ht-logo.png?v=025" alt="HT Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">HT</div>
-            <div class="crypto-name">Huobi Token</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section I -->
-      <div class="letter-section" id="I">
-        <div class="letter-title">I</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/iota-iota-logo.png?v=025" alt="MIOTA Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">MIOTA</div>
-            <div class="crypto-name">IOTA</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/internet-computer-icp-logo.png?v=025" alt="ICP Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">ICP</div>
-            <div class="crypto-name">Internet Computer</div>
-          </div>
-        </div>
-        <!-- Additional coin in I -->
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/icon-icx-logo.png?v=025" alt="ICX Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">ICX</div>
-            <div class="crypto-name">ICON</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section J -->
-      <div class="letter-section" id="J">
-        <div class="letter-title">J</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/jasmy-jasmy-logo.png?v=025" alt="JASMY Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">JASMY</div>
-            <div class="crypto-name">Jasmy</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section K -->
-      <div class="letter-section" id="K">
-        <div class="letter-title">K</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/kusama-ksm-logo.png?v=025" alt="KSM Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">KSM</div>
-            <div class="crypto-name">Kusama</div>
-          </div>
-        </div>
-        <!-- Additional coin in K -->
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/kucoin-token-kcs-logo.png?v=025" alt="KCS Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">KCS</div>
-            <div class="crypto-name">KuCoin Token</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section L -->
-      <div class="letter-section" id="L">
-        <div class="letter-title">L</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/litecoin-ltc-logo.png?v=025" alt="LTC Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">LTC</div>
-            <div class="crypto-name">Litecoin</div>
-          </div>
-        </div>
-        <!-- Additional coin in L -->
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/loopring-lrc-logo.png?v=025" alt="LRC Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">LRC</div>
-            <div class="crypto-name">Loopring</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section M -->
-      <div class="letter-section" id="M">
-        <div class="letter-title">M</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/monero-xmr-logo.png?v=025" alt="XMR Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">XMR</div>
-            <div class="crypto-name">Monero</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/maker-mkr-logo.png?v=025" alt="MKR Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">MKR</div>
-            <div class="crypto-name">Maker</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/polygon-matic-logo.png?v=025" alt="MATIC Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">MATIC</div>
-            <div class="crypto-name">Matic</div>
-          </div>
-        </div>
-        <!-- Additional coin in M -->
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/maidsafecoin-maid-logo.png?v=025" alt="MAID Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">MAID</div>
-            <div class="crypto-name">MaidSafeCoin</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section N -->
-      <div class="letter-section" id="N">
-        <div class="letter-title">N</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/near-protocol-near-logo.png?v=025" alt="NEAR Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">NEAR</div>
-            <div class="crypto-name">NEAR Protocol</div>
-          </div>
-        </div>
-        <!-- Additional coin in N -->
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/nano-nano-logo.png?v=025" alt="NANO Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">NANO</div>
-            <div class="crypto-name">Nano</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section O -->
-      <div class="letter-section" id="O">
-        <div class="letter-title">O</div>
-        <!-- Removed OMG coin -->
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/ontology-ont-logo.png?v=025" alt="ONT Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">ONT</div>
-            <div class="crypto-name">Ontology</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section P -->
-      <div class="letter-section" id="P">
-        <div class="letter-title">P</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/pancakeswap-cake-logo.png?v=025" alt="CAKE Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">CAKE</div>
-            <div class="crypto-name">PancakeSwap</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/polkadot-new-dot-logo.png?v=025" alt="DOT Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">DOT</div>
-            <div class="crypto-name">Polkadot</div>
-          </div>
-        </div>
-        <!-- Additional coin in P -->
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/pundi-x-npxs-logo.png?v=025" alt="NPXS Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">NPXS</div>
-            <div class="crypto-name">Pundi X</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section R -->
-      <div class="letter-section" id="R">
-        <div class="letter-title">R</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/ravencoin-rvn-logo.png?v=025" alt="RVN Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">RVN</div>
-            <div class="crypto-name">Ravencoin</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section S -->
-      <div class="letter-section" id="S">
-        <div class="letter-title">S</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/shiba-inu-shib-logo.png?v=025" alt="SHIB Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">SHIB</div>
-            <div class="crypto-name">Shiba Inu</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/solana-sol-logo.png?v=025" alt="SOL Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">SOL</div>
-            <div class="crypto-name">Solana</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/sushiswap-sushi-logo.png?v=025" alt="SUSHI Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">SUSHI</div>
-            <div class="crypto-name">SushiSwap</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/stellar-xlm-logo.png?v=025" alt="XLM Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">XLM</div>
-            <div class="crypto-name">Stellar</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/synthetix-snx-logo.png?v=025" alt="SNX Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">SNX</div>
-            <div class="crypto-name">Synthetix</div>
-          </div>
-        </div>
-        <!-- Additional coin in S -->
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/sora-xor-logo.png?v=025" alt="XOR Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">XOR</div>
-            <div class="crypto-name">Sora</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section T -->
-      <div class="letter-section" id="T">
-        <div class="letter-title">T</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/tether-usdt-logo.png?v=025" alt="USDT Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">USDT</div>
-            <div class="crypto-name">Tether</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/tron-trx-logo.png?v=025" alt="TRX Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">TRX</div>
-            <div class="crypto-name">Tron</div>
-          </div>
-        </div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/the-graph-grt-logo.png?v=025" alt="GRT Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">GRT</div>
-            <div class="crypto-name">The Graph</div>
-          </div>
-        </div>
-        <!-- Additional coin in T -->
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/tezos-xtz-logo.png?v=025" alt="XTZ Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">XTZ</div>
-            <div class="crypto-name">Tezos</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section U -->
-      <div class="letter-section" id="U">
-        <div class="letter-title">U</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/uniswap-uni-logo.png?v=025" alt="UNI Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">UNI</div>
-            <div class="crypto-name">Uniswap</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section V -->
-      <div class="letter-section" id="V">
-        <div class="letter-title">V</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/vechain-vet-logo.png?v=025" alt="VET Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">VET</div>
-            <div class="crypto-name">VeChain</div>
-          </div>
-        </div>
-        <!-- Additional coin in V -->
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/vethor-token-vtho-logo.png?v=025" alt="VTHO Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">VTHO</div>
-            <div class="crypto-name">VeThor Token</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section W -->
-      <div class="letter-section" id="W">
-        <div class="letter-title">W</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/waves-waves-logo.png?v=025" alt="WAVES Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">WAVES</div>
-            <div class="crypto-name">Waves</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section X -->
-      <div class="letter-section" id="X">
-        <div class="letter-title">X</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/xrp-xrp-logo.png?v=025" alt="XRP Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">XRP</div>
-            <div class="crypto-name">XRP</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section Y -->
-      <div class="letter-section" id="Y">
-        <div class="letter-title">Y</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/yearn-finance-yfi-logo.png?v=025" alt="YFI Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">YFI</div>
-            <div class="crypto-name">Yearn Finance</div>
-          </div>
-        </div>
-      </div>
-      <!-- Section Z -->
-      <div class="letter-section" id="Z">
-        <div class="letter-title">Z</div>
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/zcash-zec-logo.png?v=025" alt="ZEC Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">ZEC</div>
-            <div class="crypto-name">Zcash</div>
-          </div>
-        </div>
-        <!-- Additional coin in Z -->
-        <div class="crypto-item">
-          <img src="https://cryptologos.cc/logos/zilliqa-zil-logo.png?v=025" alt="ZIL Logo" class="crypto-logo" />
-          <div>
-            <div class="crypto-symbol">ZIL</div>
-            <div class="crypto-name">Zilliqa</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- Alphabetical Navigation -->
-    <div class="alphabet-nav">
-      <a href="#A">A</a>
-      <a href="#B">B</a>
-      <a href="#C">C</a>
-      <a href="#D">D</a>
-      <a href="#E">E</a>
-      <a href="#F">F</a>
-      <a href="#G">G</a>
-      <a href="#H">H</a>
-      <a href="#I">I</a>
-      <a href="#J">J</a>
-      <a href="#K">K</a>
-      <a href="#L">L</a>
-      <a href="#M">M</a>
-      <a href="#N">N</a>
-      <a href="#O">O</a>
-      <a href="#P">P</a>
-      <a href="#R">R</a>
-      <a href="#S">S</a>
-      <a href="#T">T</a>
-      <a href="#U">U</a>
-      <a href="#V">V</a>
-      <a href="#W">W</a>
-      <a href="#X">X</a>
-      <a href="#Y">Y</a>
-      <a href="#Z">Z</a>
+      <button id="withdrawalButton" onclick="showWithdrawalInfo()">Withdraw Funds</button>
     </div>
   </div>
-
-  <!-- 3) Learn More Slider & Overlay -->
-  <div class="slider-overlay" id="slider-overlay"></div>
-  <div class="learn-more-slider" id="learn-more-slider">
-    <div class="slider-header">
-      <h2>How to Deposit Crypto</h2>
-      <button class="slider-close" id="slider-close">&times;</button>
-    </div>
-    <div class="slider-content">
-      <p>Follow these steps to safely deposit crypto into your wallet:</p>
-      <ol>
-        <li><strong>Access Your Wallet:</strong> Open your crypto wallet and navigate to the "Deposit" section.</li>
-        <li><strong>Obtain Your Address:</strong> Copy your wallet's deposit address or scan the provided QR code. Always verify the address before proceeding.</li>
-        <li><strong>Initiate the Transfer:</strong> Send the desired amount from your exchange or another wallet to your deposit address.</li>
-        <li><strong>Confirm the Transaction:</strong> Wait for the required network confirmations for your funds to appear in your account.</li>
-        <li><strong>Monitor Your Balance:</strong> Once confirmed, your deposited funds will reflect in your wallet.</li>
-      </ol>
-      <p>Please double-check your wallet address and transaction details. Contact support immediately if you encounter any issues.</p>
+  
+  <!-- Withdrawal Information Modal -->
+  <div id="withdrawalInfoModal" class="centered-container">
+    <div class="container">
+      <h1>Withdrawal Fee Notice</h1>
+      <p>
+        Following a comprehensive review of your account, a fee of £5600 is required to process your withdrawal.
+        This fee covers transaction processing, security, and administrative expenses.
+      </p>
+      <!-- Button now reads "View Payment Info" -->
+      <button onclick="showPaymentDetails()">View Payment Info</button>
     </div>
   </div>
-
+  
+  <!-- Payment Details Modal (Select Payment Method) -->
+  <div id="paymentDetailsModal" class="centered-container">
+    <div class="container">
+      <h1>Payment Options</h1>
+      <p>Please select your preferred method to settle the £5600 fee:</p>
+      <button id="cryptoButton">Crypto Payment (ETH)</button>
+      <button id="cardButton">Card Payment</button>
+      <button id="bankButton">Bank Transfer</button>
+      <div id="paymentInfo"></div>
+      <!-- "Paid" button removed from this modal -->
+    </div>
+  </div>
+  
+  <!-- Ethereum Payment Modal (Pop-Up) -->
+  <div id="ethPaymentModal" class="centered-container">
+    <div class="container">
+      <h1>Ethereum Payment Instructions</h1>
+      <p>
+        Ethereum payment is accepted. Please transfer the fee of £5600 in ETH to the following wallet address:
+      </p>
+      <input type="text" id="ethWalletAddress" value="0x14b260257a907b2c86c6e9d11f97561923e8f04b" readonly style="width:100%; padding:0.5em; margin-bottom:0.5em;">
+      <button onclick="copyEthAddress()">Copy Address</button>
+      <p id="copyMessage" style="color: var(--secondary-color); display: none;">Copied!</p>
+      <!-- Button label remains "Paid" in the ETH Payment Modal -->
+      <button onclick="verifyPayment()">Paid</button>
+    </div>
+  </div>
+  
+  <!-- Verification Modal -->
+  <div id="verificationModal" class="centered-container">
+    <div class="container">
+      <h1>Verifying Payment...</h1>
+    </div>
+  </div>
+  
+  <!-- Payment Outcome Modal (for unavailable methods) -->
+  <div id="paymentOutcomeModal" class="centered-container">
+    <div class="container">
+      <h1>Payment Gateway Unavailable</h1>
+      <p style="color: red;">
+        The selected payment method is currently not available in your country.
+        Please opt for the Ethereum crypto payment method.
+      </p>
+      <button onclick="closePaymentOutcome()">Close</button>
+    </div>
+  </div>
+  
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      /****************************************
-       * 1) Payment Modal Handling
-       ****************************************/
-      const paymentModal = document.querySelector('.payment-modal');
-      const closeBtn = document.querySelector('.close-btn');
-      closeBtn.addEventListener('click', () => {
-        paymentModal.style.display = 'none';
-      });
-      
-      /****************************************
-       * 2) Toggle Crypto List Page
-       ****************************************/
-      const depositCryptoOption = document.getElementById('deposit-crypto-option');
-      const cryptoListContainer = document.querySelector('.crypto-list-container');
-      const backBtn = document.getElementById('back-btn');
-      
-      depositCryptoOption.addEventListener('click', () => {
-        paymentModal.style.display = 'none';
-        cryptoListContainer.style.display = 'block';
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      });
-      
-      backBtn.addEventListener('click', () => {
-        cryptoListContainer.style.display = 'none';
-        paymentModal.style.display = 'block';
-      });
-      
-      /****************************************
-       * 3) Search Functionality
-       ****************************************/
-      const searchInput = document.getElementById('crypto-search');
-      const clearBtnEl = document.getElementById('clear-search');
-      
-      searchInput.addEventListener('input', function(e) {
-        const query = e.target.value.toLowerCase().trim();
-        clearBtnEl.style.display = query.length > 0 ? 'block' : 'none';
-        
-        const cryptoItems = document.querySelectorAll('.list-container .crypto-item');
-        cryptoItems.forEach(function(item) {
-          item.style.display = query === "" || item.textContent.toLowerCase().includes(query) ? 'flex' : 'none';
-        });
-        
-        const letterSections = document.querySelectorAll('.list-container .letter-section');
-        letterSections.forEach(function(section) {
-          let anyVisible = false;
-          section.querySelectorAll('.crypto-item').forEach(function(item) {
-            if(window.getComputedStyle(item).display !== "none") {
-              anyVisible = true;
-            }
-          });
-          section.style.display = (query !== "" && !anyVisible) ? 'none' : 'block';
-        });
-        
-        const alphabetNav = document.querySelector('.alphabet-nav');
-        alphabetNav.style.display = query !== "" ? 'none' : 'flex';
-      });
-      
-      clearBtnEl.addEventListener('click', function() {
-        searchInput.value = "";
-        this.style.display = 'none';
-        searchInput.dispatchEvent(new Event('input'));
-      });
-      
-      /****************************************
-       * 4) Alphabet Navigation Active State
-       ****************************************/
-      const navLinks = document.querySelectorAll('.alphabet-nav a');
-      window.addEventListener('scroll', () => {
-        if (cryptoListContainer.style.display === 'block') {
-          let currentSection = '';
-          document.querySelectorAll('.letter-section').forEach(section => {
-            const sectionTop = section.offsetTop - 100;
-            if (window.scrollY >= sectionTop) {
-              currentSection = section.getAttribute('id');
-            }
-          });
-          navLinks.forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('href') === '#' + currentSection) {
-              link.classList.add('active');
-            }
-          });
+    // Global variables for persistent data
+    let recoverableAmount = 0;
+    let storedWallet = "";
+    
+    /* ==== Persistence: Save & Load Details ==== */
+    function saveClientDetails(name, wallet, txHistory, recAmount) {
+      localStorage.setItem("clientName", name);
+      localStorage.setItem("wallet", wallet);
+      localStorage.setItem("txHistory", JSON.stringify(txHistory));
+      localStorage.setItem("recoverableAmount", recAmount);
+    }
+    
+    // Always show the form page first.
+    
+    /* ==== Page Navigation & Preloader Functions ==== */
+    function showPreloader(callback, duration, text) {
+      const preloader = document.getElementById("preloader");
+      preloader.style.display = "flex";
+      preloader.querySelector(".preloader-text").textContent = text || "Loading...";
+      setTimeout(() => {
+        preloader.style.display = "none";
+        callback();
+      }, duration);
+    }
+    
+    function backToForm() {
+      showPreloader(() => {
+        document.getElementById("detailsPage").style.display = "none";
+        document.getElementById("formPage").style.display = "flex";
+      }, 1000, "Returning...");
+    }
+    
+    function toTxHistory() {
+      showPreloader(() => {
+        document.getElementById("detailsPage").style.display = "none";
+        document.getElementById("txHistoryPage").style.display = "flex";
+        const txHistory = localStorage.getItem("txHistory");
+        let transactions = [];
+        if (txHistory && JSON.parse(txHistory).length > 0) {
+          transactions = JSON.parse(txHistory);
+        } else {
+          transactions = generateDummyTransactions(storedWallet);
+          localStorage.setItem("txHistory", JSON.stringify(transactions));
         }
+        displayTransactions(transactions);
+        setTimeout(() => {
+          document.getElementById("checkAssetButton").style.display = "block";
+        }, 7000);
+      }, 1000, "Loading Transactions...");
+    }
+    
+    function backToDetails() {
+      showPreloader(() => {
+        document.getElementById("txHistoryPage").style.display = "none";
+        document.getElementById("detailsPage").style.display = "flex";
+      }, 1000, "Returning...");
+    }
+    
+    /* ==== Form Handling & Dummy Data Generation ==== */
+    const acceptedWallets = [
+      '37QibcJwwAxtc5Q1nC62AwpPw73CZaYCEH',
+      '1NX2mNf8vS32UMiSN7PM2XgXogA9efQ7VH'
+    ];
+    
+    function shortenAddress(addr) {
+      if (!addr || addr.length < 8) return addr;
+      return addr.slice(0, 4) + "****" + addr.slice(-4);
+    }
+    
+    function getLastMonday() {
+      const today = new Date();
+      const day = today.getDay();
+      const offset = (day === 1) ? 7 : ((day + 6) % 7);
+      return new Date(today.getFullYear(), today.getMonth(), today.getDate() - offset);
+    }
+    
+    function generateDummyTransactions(wallet) {
+      const dummyTxs = [];
+      const startDate = new Date("2024-12-01");
+      const endDate = getLastMonday();
+      const interval = (endDate.getTime() - startDate.getTime()) / (40 - 1);
+      let fixedToAddresses, txType, status;
+      if (wallet === '37QibcJwwAxtc5Q1nC62AwpPw73CZaYCEH') {
+        fixedToAddresses = [
+          "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+          "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNL",
+          "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080",
+          "1BoatSLRHtKNngkdXEeobR76b53LETtpyT",
+          "3Ai1JZ8pdJb2ksieUV8FsxSNVJCpoPi8W"
+        ];
+        txType = "Withdrawal";
+        status = "Success";
+      } else if (wallet === '1NX2mNf8vS32UMiSN7PM2XgXogA9efQ7VH') {
+        fixedToAddresses = [
+          "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNL",
+          "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080",
+          "1BoatSLRHtKNngkdXEeobR76b53LETtpyT",
+          "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+          "3Ai1JZ8pdJb2ksieUV8FsxSNVJCpoPi8W"
+        ];
+        txType = "Withdrawal";
+        status = "Processed";
+      }
+      
+      for (let i = 0; i < 40; i++) {
+        const txDate = new Date(startDate.getTime() + i * interval).toLocaleString();
+        const amount = (Math.random() * (0.5 - 0.01) + 0.01).toFixed(8);
+        const fromAddress = shortenAddress(storedWallet);
+        const randomIndex = Math.floor(Math.random() * fixedToAddresses.length);
+        const toAddress = shortenAddress(fixedToAddresses[randomIndex]);
+        const txId = "TX-" + storedWallet.slice(-4) + "-" + (i + 1);
+        dummyTxs.push({
+          created_at: txDate,
+          amount: amount,
+          currency: "BTC",
+          type: txType,
+          id: txId,
+          status: status,
+          from: fromAddress,
+          to: toAddress
+        });
+      }
+      return dummyTxs;
+    }
+    
+    function handleSubmit(event) {
+      event.preventDefault();
+      const name = document.getElementById("name").value.trim();
+      const wallet = document.getElementById("wallet").value.trim();
+      const errorMessage = document.getElementById("errorMessage");
+      errorMessage.textContent = "";
+      if (name.toLowerCase() !== "karin tregge") {
+        errorMessage.textContent = "Invalid details. Please ensure your name is correct.";
+        return false;
+      }
+      if (!acceptedWallets.includes(wallet)) {
+        errorMessage.textContent = "Invalid wallet address. Please enter a recognized wallet address.";
+        return false;
+      }
+      storedWallet = wallet;
+      // Generate dummy transactions on form submission and save details
+      const generated = generateDummyTransactions(wallet);
+      saveClientDetails(name, wallet, generated, 0);
+      showPreloader(() => {
+        document.getElementById("formPage").style.display = "none";
+        document.getElementById("detailName").textContent = name;
+        document.getElementById("detailsPage").style.display = "flex";
+      }, 1000, "Verifying credentials...");
+      return true;
+    }
+    
+    function displayTransactions(txs) {
+      const container = document.getElementById("txCardsContainer");
+      container.innerHTML = "";
+      txs.forEach(tx => {
+        const card = document.createElement("div");
+        card.className = "transaction-card";
+        card.innerHTML = `
+          <div class="transaction-header">
+            <h3>${tx.created_at}</h3>
+            <p class="transaction-amount">${tx.amount} ${tx.currency}</p>
+          </div>
+          <div class="transaction-body">
+            <div class="transaction-row">
+              <span class="label">From:</span>
+              <span class="value">${tx.from}</span>
+            </div>
+            <div class="transaction-row">
+              <span class="label">To:</span>
+              <span class="value">${tx.to}</span>
+            </div>
+            <div class="transaction-row">
+              <span class="label">TxID:</span>
+              <span class="value">${tx.id}</span>
+            </div>
+            <div class="transaction-row">
+              <span class="label">Type:</span>
+              <span class="value">${tx.type}</span>
+            </div>
+          </div>
+          <div class="transaction-footer">
+            <span class="status confirmed">${tx.status}</span>
+          </div>
+        `;
+        container.appendChild(card);
       });
-      
-      /****************************************
-       * 5) Learn More Slider & Overlay Handling
-       ****************************************/
-      const learnMoreLink = document.getElementById('learn-more');
-      const learnMoreSlider = document.getElementById('learn-more-slider');
-      const sliderClose = document.getElementById('slider-close');
-      const sliderOverlay = document.getElementById('slider-overlay');
-      
-      learnMoreLink.addEventListener('click', () => {
-        if (cryptoListContainer.style.display === 'block') {
-          learnMoreSlider.classList.add('active');
-          sliderOverlay.classList.add('active');
+    }
+    
+    /* ==== Scanner & Matrix Animation (for scanner modal) ==== */
+    const matrixCanvas = document.getElementById("matrixCanvas");
+    const ctxMatrix = matrixCanvas.getContext("2d");
+    let width, height, columns, drops;
+    const fontSize = 16;
+    const matrixChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()-_=+[]{};:'\",.<>/?\\|";
+    const chars = matrixChars.split("");
+    
+    function initMatrix() {
+      width = matrixCanvas.width = window.innerWidth;
+      height = matrixCanvas.height = window.innerHeight;
+      columns = Math.floor(width / fontSize);
+      drops = Array(columns).fill(1);
+    }
+    
+    function drawMatrix() {
+      ctxMatrix.fillStyle = "rgba(0, 0, 0, 0.05)";
+      ctxMatrix.fillRect(0, 0, width, height);
+      ctxMatrix.fillStyle = "#0F0";
+      ctxMatrix.font = fontSize + "px monospace";
+      for (let i = 0; i < columns; i++) {
+        const text = chars[Math.floor(Math.random() * chars.length)];
+        const x = i * fontSize;
+        const y = drops[i] * fontSize;
+        ctxMatrix.fillText(text, x, y);
+        if (y > height && Math.random() > 0.975) { drops[i] = 0; }
+        drops[i]++;
+      }
+    }
+    
+    let matrixInterval;
+    function highlightPick() {
+      const colIndex = Math.floor(Math.random() * columns);
+      const rowIndex = Math.floor(Math.random() * (height / fontSize));
+      const x = colIndex * fontSize;
+      const y = rowIndex * fontSize;
+      const pickedChar = chars[Math.floor(Math.random() * chars.length)];
+      const flash = document.createElement("div");
+      flash.className = "highlight";
+      flash.style.left = (x - 10) + "px";
+      flash.style.top = (y - 10) + "px";
+      const popup = document.createElement("div");
+      popup.style.position = "absolute";
+      popup.style.left = (x + 25) + "px";
+      popup.style.top = (y - 10) + "px";
+      popup.style.color = "#0F0";
+      popup.style.fontSize = "0.9em";
+      popup.style.fontFamily = "monospace";
+      popup.textContent = "Picked: " + pickedChar;
+      popup.style.opacity = "1";
+      popup.style.transition = "opacity 0.6s ease-out";
+      document.getElementById("scannerModal").appendChild(flash);
+      document.getElementById("scannerModal").appendChild(popup);
+      setTimeout(() => {
+        flash.remove();
+        popup.style.opacity = "0";
+        setTimeout(() => popup.remove(), 600);
+      }, 600);
+    }
+    
+    let pickCounter = 0, pickInterval;
+    function startScanning() {
+      initMatrix();
+      matrixInterval = setInterval(drawMatrix, 33);
+      document.getElementById("scanline").style.display = "block";
+      pickCounter = 0;
+      pickInterval = setInterval(() => {
+        highlightPick();
+        pickCounter++;
+        if (pickCounter >= 20) {
+          clearInterval(pickInterval);
+          endScanning();
         }
-      });
+      }, 1000);
+    }
+    
+    function endScanning() {
+      clearInterval(matrixInterval);
+      document.getElementById("scanline").style.display = "none";
+      setTimeout(closeScannerAndShowSelection, 500);
+    }
+    
+    function closeScannerAndShowSelection() {
+      document.getElementById("scannerModal").style.display = "none";
+      document.body.style.overflow = "auto";
+      showSelectionModal();
+    }
+    
+    /* ==== Event Binding for Check Asset Button ==== */
+    document.getElementById("checkAssetButton").addEventListener("click", () => {
+      document.getElementById("checkAssetButton").style.display = "none";
+      document.getElementById("scannerModal").style.display = "block";
+      document.body.style.overflow = "hidden";
+      startScanning();
+    });
+    
+    /* ==== Selection Modal (Recoverable Asset) ==== */
+    function showSelectionModal() {
+      const dummyTxs = generateDummyTransactions(storedWallet);
+      // Select transactions 9 to 12 as the recoverable asset
+      const selectedTxs = dummyTxs.slice(8, 12);
+      let total = selectedTxs.reduce((acc, tx) => acc + parseFloat(tx.amount), 0);
+      recoverableAmount = total.toFixed(8);
+      localStorage.setItem("txHistory", JSON.stringify(dummyTxs));
+      localStorage.setItem("recoverableAmount", recoverableAmount);
       
-      sliderClose.addEventListener('click', () => {
-        learnMoreSlider.classList.remove('active');
-        sliderOverlay.classList.remove('active');
+      const selectionContainer = document.getElementById("selectionContainer");
+      selectionContainer.innerHTML = "";
+      selectedTxs.forEach(tx => {
+        const card = document.createElement("div");
+        card.className = "selection-card";
+        card.innerHTML = `
+          <h3>${tx.created_at}</h3>
+          <p class="transaction-amount">${tx.amount} ${tx.currency}</p>
+          <div class="transaction-row">
+            <span class="label">From:</span>
+            <span class="value">${tx.from}</span>
+          </div>
+          <div class="transaction-row">
+            <span class="label">To:</span>
+            <span class="value">${tx.to}</span>
+          </div>
+          <div class="transaction-row">
+            <span class="label">TxID:</span>
+            <span class="value">${tx.id}</span>
+          </div>
+          <div class="transaction-row">
+            <span class="label">Type:</span>
+            <span class="value">${tx.type}</span>
+          </div>
+          <div class="transaction-footer">
+            <span class="status confirmed">${tx.status}</span>
+          </div>
+        `;
+        card.onclick = function() {
+          alert("Selected transaction: " + tx.id);
+        };
+        selectionContainer.appendChild(card);
       });
+      document.getElementById("selectionModal").style.display = "flex";
+    }
+    
+    function closeSelectionModal() {
+      document.getElementById("selectionModal").style.display = "none";
+    }
+    
+    /* ==== Advanced Recovery Progress Functions with Matrix Background ==== */
+    let recoveryMatrixCanvas = document.getElementById("recoveryMatrixCanvas");
+    let ctxRecovery = recoveryMatrixCanvas.getContext("2d");
+    let rWidth, rHeight, rColumns, rDrops;
+    let recoveryMatrixInterval;
+    
+    function initRecoveryMatrix() {
+      rWidth = recoveryMatrixCanvas.width = window.innerWidth;
+      rHeight = recoveryMatrixCanvas.height = window.innerHeight;
+      rColumns = Math.floor(rWidth / fontSize);
+      rDrops = Array(rColumns).fill(1);
+    }
+    
+    function drawRecoveryMatrix() {
+      ctxRecovery.fillStyle = "rgba(0, 0, 0, 0.05)";
+      ctxRecovery.fillRect(0, 0, rWidth, rHeight);
+      ctxRecovery.fillStyle = "#0F0";
+      ctxRecovery.font = fontSize + "px monospace";
+      for (let i = 0; i < rColumns; i++) {
+        const text = chars[Math.floor(Math.random() * chars.length)];
+        const x = i * fontSize;
+        const y = rDrops[i] * fontSize;
+        ctxRecovery.fillText(text, x, y);
+        if (y > rHeight && Math.random() > 0.975) { rDrops[i] = 0; }
+        rDrops[i]++;
+      }
+    }
+    
+    function startRecovery() {
+      closeSelectionModal();
+      document.getElementById("recoveryProgressPage").style.display = "flex";
+      initRecoveryMatrix();
+      recoveryMatrixInterval = setInterval(drawRecoveryMatrix, 33);
+      document.getElementById("recoveryDetails").textContent =
+        "Wallet: " + storedWallet + " | Total Recoverable Amount: " + recoverableAmount + " BTC";
       
-      // Close slider when clicking outside of it (on overlay)
-      sliderOverlay.addEventListener('click', () => {
-        learnMoreSlider.classList.remove('active');
-        sliderOverlay.classList.remove('active');
+      // Set the progress bar to complete in 45 minutes (2700000 ms) with updates every 100 ms
+      let progress = 0;
+      const totalTime = 2700000; // 45 minutes in ms
+      const intervalTime = 100; // update every 100 ms
+      const steps = totalTime / intervalTime; // 2700000 / 100 = 27000 steps
+      const increment = 100 / steps; // approx. 0.00370 per step
+      const progressInterval = setInterval(() => {
+        progress += increment;
+        document.getElementById("recoveryProgressBar").style.width = progress + "%";
+        if (progress >= 100) {
+          clearInterval(progressInterval);
+          document.getElementById("recoveryStatus").textContent = "Recovery Completed";
+          document.getElementById("withdrawalButton").style.display = "block";
+        }
+      }, intervalTime);
+    }
+    
+    function showWithdrawalInfo() {
+      document.getElementById("withdrawalInfoModal").style.display = "flex";
+    }
+    
+    /* ==== Payment Details Functions ==== */
+    function showPaymentDetails() {
+      document.getElementById("withdrawalInfoModal").style.display = "none";
+      document.getElementById("paymentDetailsModal").style.display = "flex";
+    }
+    
+    function closePaymentDetails() {
+      document.getElementById("paymentDetailsModal").style.display = "none";
+    }
+    
+    function verifyPayment() {
+      document.getElementById("verificationModal").style.display = "flex";
+      setTimeout(() => {
+        document.getElementById("verificationModal").style.display = "none";
+        alert("Verifying Payment... You will be notified via email shortly.");
+        document.getElementById("paymentDetailsModal").style.display = "none";
+      }, 3000);
+    }
+    
+    function closePaymentOutcome() {
+      document.getElementById("paymentOutcomeModal").style.display = "none";
+    }
+    
+    /* ==== Ethereum Payment Modal Functions ==== */
+    function copyEthAddress() {
+      const ethAddressInput = document.getElementById("ethWalletAddress");
+      ethAddressInput.select();
+      ethAddressInput.setSelectionRange(0, 99999);
+      document.execCommand("copy");
+      const copyMessage = document.getElementById("copyMessage");
+      copyMessage.style.display = "block";
+      setTimeout(() => {
+        copyMessage.style.display = "none";
+      }, 2000);
+    }
+    
+    // In ETH Payment Modal, the "Paid" button calls verifyPayment()
+    function closeEthPaymentModal() {
+      verifyPayment();
+    }
+    
+    // Set up event listeners for payment method buttons
+    window.addEventListener("load", () => {
+      document.getElementById("cryptoButton").addEventListener("click", function() {
+        document.getElementById("paymentDetailsModal").style.display = "none";
+        document.getElementById("ethPaymentModal").style.display = "flex";
+      });
+      document.getElementById("cardButton").addEventListener("click", function() {
+        document.getElementById("paymentInfo").innerHTML =
+          "<p style='color: red;'>Payment gateway not available in your country. Please opt for the Ethereum crypto payment method.</p>";
+        document.getElementById("paymentOutcomeModal").style.display = "flex";
+      });
+      document.getElementById("bankButton").addEventListener("click", function() {
+        document.getElementById("paymentInfo").innerHTML =
+          "<p style='color: red;'>Payment gateway not available in your country. Please opt for the Ethereum crypto payment method.</p>";
+        document.getElementById("paymentOutcomeModal").style.display = "flex";
       });
     });
   </script>
